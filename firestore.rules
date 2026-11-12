@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signed() { return request.auth != null; }
+    function roomDoc(code) { return get(/databases/$(database)/documents/rooms/$(code)).data; }
+    function roomAfter(code) { return getAfter(/databases/$(database)/documents/rooms/$(code)).data; }
+    function active(code) { return signed() && request.time < roomDoc(code).expiresAt; }
+    function member(code) { return active(code) && exists(/databases/$(database)/documents/rooms/$(code)/members/$(request.auth.uid)); }
+    function admin(code) { return active(code) && roomDoc(code).admin == request.auth.uid; }
+    match /rooms/{code} {
+      // Only lookup by code, never enumerate rooms.
+      allow get: if signed() && (!exists(/databases/$(database)/documents/rooms/$(code)) || request.time < resource.data.expiresAt);
+      allow list: if false;
+      allow create: if signed() && code.matches('^[0-9]{6}$')
+        && request.resource.data.keys().hasOnly(['name','admin','createdAt','expiresAt','revealed','phase','columns'])
+        && request.resource.data.admin == request.auth.uid
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 70
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(24, 'h') + duration.value(2, 'm')
+        && request.resource.data.revealed is bool && request.resource.data.phase == 0
+        && request.resource.data.columns is list && request.resource.data.columns.size() <= 12;
+      allow update: if admin(code)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','columns','revealed','phase'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 70
+        && request.resource.data.columns is list && request.resource.data.columns.size() > 0 && request.resource.data.columns.size() <= 12
+        && request.resource.data.revealed is bool
+        && request.resource.data.phase in [0,1,2];
+      allow delete: if admin(code);
+      match /members/{uid} {
+        allow read: if member(code);
+        allow create, update: if signed() && request.time < roomAfter(code).expiresAt && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['uid','name','expiresAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
+          && request.resource.data.expiresAt == roomAfter(code).expiresAt;
+        allow delete: if active(code) && (request.auth.uid == uid || admin(code));
+      }
+      match /cards/{cardId} {
+        // Queries from participants in private mode must filter author == auth.uid.
+        allow read: if member(code) && (roomDoc(code).revealed || admin(code) || resource.data.author == request.auth.uid);
+        allow create: if member(code)
+          && request.resource.data.keys().hasOnly(['id','column','text','author','authorName','votes','createdAt','expiresAt'])
+          && request.resource.data.id == cardId && request.resource.data.author == request.auth.uid
+          && request.resource.data.authorName is string && request.resource.data.authorName.size() <= 40
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 3000
+          && request.resource.data.column is string
+          && request.resource.data.votes is map && request.resource.data.votes.size() == 0
+          && request.resource.data.createdAt is number
+          && request.resource.data.expiresAt == roomDoc(code).expiresAt;
+        allow update: if member(code) && (
+          // A participant can edit or move their own card, never change its author or expiry.
+          (resource.data.author == request.auth.uid && resource.data.get('groupSize', 1) == 1
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text','column'])
+            && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 3000
+            && request.resource.data.column is string)
+          // Moderator can edit, move and consolidate cards and vote maps during merging.
+          || (admin(code)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text','column','votes','groupSize'])
+            && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 12000
+            && request.resource.data.column is string && request.resource.data.votes is map)
+          // Voters can add/remove only their own vote, after reveal.
+          || (roomDoc(code).revealed
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes'])
+            && request.resource.data.votes is map
+            && request.resource.data.votes.diff(resource.data.votes).affectedKeys().hasOnly([request.auth.uid])
+            && request.resource.data.votes.get(request.auth.uid, false) is bool)
+        );
+        allow delete: if member(code) && (admin(code) || (resource.data.author == request.auth.uid && resource.data.get('groupSize', 1) == 1));
+      }
+    }
+  }
+}
