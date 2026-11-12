@@ -23,6 +23,8 @@ Crie um repositório e envie o arquivos da raiz para a raiz. Em Settings → Pag
 
 ## Comportamentos
 
+- A página inicial mostra apenas “Criar nova sala” e “Entrar em sala”. Não há sala, cards, participantes ou votos de exemplo; salas novas começam com zero cards e somente seu criador como participante. Salas existentes só são carregadas ao entrar com o código.
+
 - Criar/entrar com código numérico de seis dígitos; a sala é acessível a quem souber o código e estiver autenticado anonimamente. Códigos não são senhas; para ambientes expostos considere App Check e controles de abuso.
 - Cards privados: somente o autor lê, inclusive quando quem acessa é o admin. Todos veem marcadores desfocados dos outros cards, mas os textos não são enviados aos demais navegadores. A coleção `cardPreviews` contém apenas id, coluna, UID do autor e expiração. As consultas de conteúdo privado filtram pelo próprio autor para todos os papéis. Exportar e agrupar ficam bloqueados até a liberação. Cards de salas antigas ganham marcadores quando seus autores entrarem, ou quando o admin abrir uma sala já liberada. Publicar as regras novas é obrigatório; regras antigas continuam permitindo ao admin ler o texto diretamente no banco. Conteúdo que já foi revelado não pode ser apagado da memória ou de cópias de quem já o leu.
 - Admin edita/cria até 12 colunas, libera cards e agrupa.

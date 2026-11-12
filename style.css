@@ -10,3 +10,6 @@
 @media(max-width:850px){.sidebar .brand>span{display:inline;font-size:17px}.sidebar .primary{margin-top:0}}
 
 .private-card{cursor:default;min-height:121px;user-select:none}.private-blur{filter:blur(5px);pointer-events:none;display:grid;gap:10px;margin:7px 0 20px}.private-blur span{height:7px;border-radius:5px;background:#bcc5b7;width:92%}.private-blur span:nth-child(2){width:78%}.private-blur span:last-child{width:57%}.private-label{display:flex;gap:6px;align-items:center;justify-content:flex-end;font-size:10px;color:#98a18e}.private-label svg{width:12px;height:12px}
+
+.entry-page{min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:24px}.entry-actions{display:flex;gap:14px;align-items:stretch}.entry-actions button{min-width:190px;min-height:52px;font-size:14px;padding:15px 24px}.entry-actions .outline{background:#fff}.entry-actions svg{width:18px;height:18px}
+@media(max-width:520px){.entry-actions{flex-direction:column;width:min(100%,300px)}.entry-actions button{width:100%}}
