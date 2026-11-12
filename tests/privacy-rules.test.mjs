@@ -2,7 +2,7 @@ import {before,after,beforeEach,test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
-import {doc,setDoc,getDoc,getDocs,collection,query,where,updateDoc,deleteDoc,writeBatch,runTransaction,Timestamp,serverTimestamp} from 'firebase/firestore';
+import {doc,setDoc,getDoc,getDocs,getDocFromServer,getDocsFromServer,collection,query,where,updateDoc,deleteDoc,writeBatch,runTransaction,Timestamp,serverTimestamp} from 'firebase/firestore';
 let env,expiry;
 const code='123456', db=uid=>env.authenticatedContext(uid).firestore();
 const card=(id,author)=>({id,author,authorName:author,text:'SECRET '+author,column:'good',votes:{},createdAt:Date.now(),expiresAt:expiry});
@@ -45,4 +45,21 @@ test('room and admin membership can be created in one transaction',async()=>{
 });
 test('expired text and previews are denied',async()=>{
  await env.withSecurityRulesDisabled(async c=>{await updateDoc(rr(c.firestore()),{expiresAt:Timestamp.fromMillis(Date.now()-1000)})});await assertFails(getDoc(ref(db('alice'),'a')));await assertFails(getDocs(collection(db('admin'),'rooms',code,'cardPreviews')));
+});
+
+test('repeated hiding restores author-only reads for participants and admin',async()=>{
+ const admin=db('admin');
+ for(let round=0;round<2;round++){
+  await assertSucceeds(updateDoc(rr(admin),{revealed:true}));
+  for(const uid of ['admin','alice','bob'])assert.equal((await assertSucceeds(getDocsFromServer(collection(db(uid),'rooms',code,'cards')))).size,3);
+  await assertSucceeds(updateDoc(rr(admin),{revealed:false}));
+  for(const uid of ['admin','alice','bob']){
+   const d=db(uid),own={admin:'c',alice:'a',bob:'b'}[uid];
+   await assertSucceeds(getDocFromServer(ref(d,own)));
+   for(const id of ['a','b','c'].filter(id=>id!==own))await assertFails(getDocFromServer(ref(d,id)));
+   await assertFails(getDocsFromServer(collection(d,'rooms',code,'cards')));
+   assert.equal((await assertSucceeds(getDocsFromServer(query(collection(d,'rooms',code,'cards'),where('author','==',uid))))).size,1);
+   assert.equal((await assertSucceeds(getDocsFromServer(collection(d,'rooms',code,'cardPreviews')))).size,3);
+  }
+ }
 });

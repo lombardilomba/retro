@@ -64,5 +64,23 @@ test('app renders blur without text in DOM/ARIA, excludes admin editing, and res
   await app.putCard({...adminCard,id:'new'});assert.deepEqual(batches.at(-1).map(o=>o[1]),['rooms/123456/cards/new','rooms/123456/cardPreviews/new']);assert.equal(batches.at(-1)[1][2].text,undefined);
   await app.patchCard(adminCard,{column:'action'});assert.equal(batches.at(-1)[1][2].column,'action');
   await app.deleteCard(adminCard);assert.ok(batches.at(-1).every(o=>o[0]==='delete'));assert.equal(batches.at(-1).length,2);
+  // A participant already viewing the public board must switch back to author-only
+  // reads and clear exported text when the admin makes the room private again.
+  f.getDoc=async()=>({exists:()=>true,data:()=>({...roomDoc,revealed:true})});app.setState({uid:'alice'});await app.loadRoom('123456');
+  const participantRoom=subscriptions.filter(s=>s.q.path==='rooms/123456').at(-1);
+  const participantPreviews=subscriptions.filter(s=>s.q.path.endsWith('/cardPreviews')).at(-1);
+  participantPreviews.next({docs:[alice,adminCard].map(c=>({id:c.id,data:()=>publicPreview(c)}))});
+  const publicStream=subscriptions.filter(s=>s.q.path.endsWith('/cards')).at(-1);publicStream.next({docs:[alice,adminCard].map(c=>({id:c.id,data:()=>c}))});assert.ok(node('#app').innerHTML.includes('ADMIN SECRET'));
+  await app.handle({target:{closest:()=>({dataset:{action:'export'}})}});assert.ok(node('#modal').innerHTML.includes('ADMIN SECRET'));
+  participantRoom.next({exists:()=>true,data:()=>roomDoc,metadata:{hasPendingWrites:false,fromCache:false}});
+  assert.equal(publicStream.active,false);assert.ok(!node('#app').innerHTML.includes('ADMIN SECRET'));assert.ok(node('#app').innerHTML.includes('ALICE SECRET'));assert.equal(node('#modal').open,false);assert.ok(!node('#modal').innerHTML.includes('ADMIN SECRET'),'clear sensitive dialog markup when returning to private');
+  const ownStream=subscriptions.filter(s=>s.q.path.endsWith('/cards')).at(-1);assert.deepEqual(ownStream.q.filter,['author','==','alice']);
+  publicStream.next({docs:[{id:'c',data:()=>adminCard}]});assert.ok(!node('#app').innerHTML.includes('ADMIN SECRET'),'ignore late public snapshots after hiding');
+  for(let round=0;round<2;round++){
+   participantRoom.next({exists:()=>true,data:()=>({...roomDoc,revealed:true}),metadata:{hasPendingWrites:false,fromCache:false}});
+   const stream=subscriptions.filter(s=>s.q.path.endsWith('/cards')).at(-1);stream.next({docs:[alice,adminCard].map(c=>({id:c.id,data:()=>c}))});assert.ok(node('#app').innerHTML.includes('ADMIN SECRET'));
+   participantRoom.next({exists:()=>true,data:()=>roomDoc,metadata:{hasPendingWrites:false,fromCache:false}});assert.ok(!node('#app').innerHTML.includes('ADMIN SECRET'));assert.ok(node('#app').innerHTML.includes('ALICE SECRET'));
+  }
+
  }finally{await rm(temp,{recursive:true,force:true});for(const [key,value]of previous)if(value===undefined)delete globalThis[key];else globalThis[key]=value}
 });
