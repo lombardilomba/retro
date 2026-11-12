@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/privacy.test.mjs",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-retro-privacy \"node --test tests/privacy-rules.test.mjs\""
+    "test:rules": "firebase emulators:exec --only firestore --project demo-retro-privacy \"node --test tests/privacy-rules.test.mjs\"",
+    "package": "python3 scripts/package-site.py"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",

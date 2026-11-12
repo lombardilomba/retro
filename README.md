@@ -47,3 +47,7 @@ Após atualizar o site, publique novamente `firestore.rules` no Console Firebase
 Sem dependências: `npm test` testa a projeção segura, a ausência de texto privado no DOM/ARIA, as permissões do admin, a troca de consultas na liberação e o descarte de snapshots antigos.
 
 Para as regras: `npm install` e `npm run test:rules` (Node 22+ e Java 21+). Os testes usam apenas o Firestore Emulator do projeto fictício `demo-retro-privacy`, sem alterar o projeto de produção. Verificam autor, admin, visitantes, consultas, metadados, gravações atômicas, liberação, votos, agrupamento e expiração.
+
+## Atualizações e cache
+
+Após editar arquivos, execute `npm run package` (Python 3). Esse comando atualiza as versões dos assets no HTML e na importação do módulo de privacidade, além do ZIP para download. Assim, a próxima atualização da página carrega os arquivos novos em vez de reutilizar o JavaScript antigo. Para recarregar imediatamente um documento já aberto, use Ctrl+Shift+R ou um link com parâmetro de versão.
