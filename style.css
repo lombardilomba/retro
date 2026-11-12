@@ -8,3 +8,5 @@
 
 .sidebar .brand{margin-bottom:32px;letter-spacing:-.6px}
 @media(max-width:850px){.sidebar .brand>span{display:inline;font-size:17px}.sidebar .primary{margin-top:0}}
+
+.private-card{cursor:default;min-height:121px;user-select:none}.private-blur{filter:blur(5px);pointer-events:none;display:grid;gap:10px;margin:7px 0 20px}.private-blur span{height:7px;border-radius:5px;background:#bcc5b7;width:92%}.private-blur span:nth-child(2){width:78%}.private-blur span:last-child{width:57%}.private-label{display:flex;gap:6px;align-items:center;justify-content:flex-end;font-size:10px;color:#98a18e}.private-label svg{width:12px;height:12px}

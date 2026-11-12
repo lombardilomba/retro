@@ -1,0 +1,14 @@
+{
+  "name": "retro",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/privacy.test.mjs",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-retro-privacy \"node --test tests/privacy-rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "6.0.0",
+    "firebase": "13.3.0",
+    "firebase-tools": "15.36.0"
+  }
+}

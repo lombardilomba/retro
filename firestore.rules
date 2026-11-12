@@ -37,9 +37,22 @@ service cloud.firestore {
           && request.resource.data.expiresAt == roomAfter(code).expiresAt;
         allow delete: if active(code) && (request.auth.uid == uid || admin(code));
       }
+      // Safe public metadata: no text, snippets, lengths, author names or votes.
+      match /cardPreviews/{cardId} {
+        allow read: if member(code);
+        allow create, update: if member(code)
+          && request.resource.data.keys().hasOnly(['id','column','author','expiresAt'])
+          && request.resource.data.id == cardId
+          && request.resource.data.column is string
+          && request.resource.data.expiresAt == roomDoc(code).expiresAt
+          && request.resource.data.author == getAfter(/databases/$(database)/documents/rooms/$(code)/cards/$(cardId)).data.author
+          && request.resource.data.column == getAfter(/databases/$(database)/documents/rooms/$(code)/cards/$(cardId)).data.column
+          && (request.resource.data.author == request.auth.uid || (admin(code) && roomDoc(code).revealed));
+        allow delete: if member(code) && (get(/databases/$(database)/documents/rooms/$(code)/cards/$(cardId)).data.author == request.auth.uid || (admin(code) && roomDoc(code).revealed));
+      }
       match /cards/{cardId} {
-        // Queries from participants in private mode must filter author == auth.uid.
-        allow read: if member(code) && (roomDoc(code).revealed || admin(code) || resource.data.author == request.auth.uid);
+        // Everyone, including room admins, must query only their own private content.
+        allow read: if member(code) && (roomDoc(code).revealed || resource.data.author == request.auth.uid);
         allow create: if member(code)
           && request.resource.data.keys().hasOnly(['id','column','text','author','authorName','votes','createdAt','expiresAt'])
           && request.resource.data.id == cardId && request.resource.data.author == request.auth.uid
@@ -56,7 +69,7 @@ service cloud.firestore {
             && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 3000
             && request.resource.data.column is string)
           // Moderator can edit, move and consolidate cards and vote maps during merging.
-          || (admin(code)
+          || (admin(code) && (roomDoc(code).revealed || resource.data.author == request.auth.uid)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text','column','votes','groupSize'])
             && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 12000
             && request.resource.data.column is string && request.resource.data.votes is map)
@@ -67,7 +80,7 @@ service cloud.firestore {
             && request.resource.data.votes.diff(resource.data.votes).affectedKeys().hasOnly([request.auth.uid])
             && request.resource.data.votes.get(request.auth.uid, false) is bool)
         );
-        allow delete: if member(code) && (admin(code) || (resource.data.author == request.auth.uid && resource.data.get('groupSize', 1) == 1));
+        allow delete: if member(code) && ((admin(code) && (roomDoc(code).revealed || resource.data.author == request.auth.uid)) || (resource.data.author == request.auth.uid && resource.data.get('groupSize', 1) == 1));
       }
     }
   }
