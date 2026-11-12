@@ -13,3 +13,5 @@
 
 .entry-page{min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:24px}.entry-actions{display:flex;gap:14px;align-items:stretch}.entry-actions button{min-width:190px;min-height:52px;font-size:14px;padding:15px 24px}.entry-actions .outline{background:#fff}.entry-actions svg{width:18px;height:18px}
 @media(max-width:520px){.entry-actions{flex-direction:column;width:min(100%,300px)}.entry-actions button{width:100%}}
+
+.sidebar nav{margin-top:24px}
